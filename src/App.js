@@ -78,7 +78,7 @@ function tagWord(word) {
   if (LEXICON[w])
     return { tag: LEXICON[w], step: 'lexicon', rule: `Exact lexicon match: "${w}" → ${LEXICON[w]}` };
 
-  if (/^[०-९\d][०-९\d,./%\-]*$/.test(w))
+  if (/^[०-९\d][०-९\d,./%-]*$/.test(w))
     return { tag: 'CD', step: 'digit', rule: 'Digit pattern (Devanagari or ASCII number)' };
 
   if (/^[^\u0900-\u097F\w]+$/.test(w))
