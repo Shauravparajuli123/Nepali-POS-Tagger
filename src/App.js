@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 // ── NCG Tag definitions ────────────────────────────────────────────────────
 const TAG_INFO = {
@@ -38,15 +38,14 @@ const TAG_INFO = {
   XX:  { label: "Unknown",        color: "#9ca3af", bg: "#f3f4f6", desc: "Unknown/Unclassified word" },
 };
 
-// ── Morphology engine (JS port of Python tagger) ──────────────────────────
+// ── Morphology engine ──────────────────────────────────────────────────────
 const LEXICON = {
   'छ':'VA','छन्':'VA','छु':'VA','छौ':'VA','थियो':'VA','थिए':'VA',
   'हो':'VA','होइन':'VA','हैन':'VA','हुन्':'VA','भयो':'VA','भए':'VA',
   'हुनेछ':'VA','थिएन':'VA','छैन':'VA','छैनन्':'VA',
   'म':'PP','हामी':'PP','तिमी':'PP','तपाईं':'PP','उनी':'PP',
   'उहाँ':'PP','ऊ':'PP','उनीहरू':'PP',
-  'यो':'PPD','त्यो':'PPD','यी':'PPD','ती':'PPD',
-  'यस':'PPD','त्यस':'PPD',
+  'यो':'PPD','त्यो':'PPD','यी':'PPD','ती':'PPD','यस':'PPD','त्यस':'PPD',
   'को':'PPW','के':'PPW','कहाँ':'PPW','कसरी':'PPW','कति':'PPW','किन':'PPW',
   'आफू':'PPR','आफैं':'PPR','आफ्नो':'PPR',
   'कोही':'PPX','केही':'PPX','सबै':'PPX','कुनै':'PPX',
@@ -76,27 +75,18 @@ function tagWord(word) {
   const w = word.trim();
   if (!w) return { tag: 'SYM', step: 'empty', rule: 'Empty input' };
 
-  // Step 1: Lexicon
-  if (LEXICON[w]) {
+  if (LEXICON[w])
     return { tag: LEXICON[w], step: 'lexicon', rule: `Exact lexicon match: "${w}" → ${LEXICON[w]}` };
-  }
 
-  // Step 2: Digit
-  if (/^[०-९\d][०-९\d,.\/%\-]*$/.test(w)) {
+  if (/^[०-९\d][०-९\d,./%\-]*$/.test(w))
     return { tag: 'CD', step: 'digit', rule: 'Digit pattern (Devanagari or ASCII number)' };
-  }
 
-  // Step 3: Punctuation
-  if (/^[^\u0900-\u097F\w]+$/.test(w)) {
+  if (/^[^\u0900-\u097F\w]+$/.test(w))
     return { tag: 'SYM', step: 'punct', rule: 'Pure punctuation/symbol (no Devanagari chars)' };
-  }
 
-  // Step 4: Roman/English
-  if (/^[A-Za-z]/.test(w)) {
+  if (/^[A-Za-z]/.test(w))
     return { tag: 'FW', step: 'roman', rule: 'Starts with Roman/English character → Foreign Word' };
-  }
 
-  // Step 5: Verb rules
   if (/(इएको|इएकी|इएका|\u0947को|\u0947की|\u0947का|एको|एकी|एका|यको|यकी|यका)$/.test(w))
     return { tag: 'VBP', step: 'verb', rule: 'Perfective participle suffix (-एको/-ेको/-एकी/-एका)' };
 
@@ -125,7 +115,7 @@ function tagWord(word) {
     return { tag: 'VBF', step: 'verb', rule: 'Passive/causative suffix (-ाइयो/-इयो/-गरियो)' };
 
   if (/\u094Dछ(\u0941|\u094Dन्|\u094Cस्|न्|स्)?$/.test(w))
-    return { tag: 'VBF', step: 'verb', rule: 'Halant+छ form (्छु/्छ/्छन्) — बस्छु, पढ्छ, गर्छु' };
+    return { tag: 'VBF', step: 'verb', rule: 'Halant+छ form (्छु/्छ/्छन्) — बस्छु, पढ्छ' };
 
   if (/(न्छ|ञ्छ|र्छ|ल्छ|स्छ|ग्छ|ट्छ|ँछ|म्छ|ब्छ|द्छ|न्दछ)$/.test(w))
     return { tag: 'VBF', step: 'verb', rule: 'Consonant cluster+छ suffix (गर्छ, जान्छ, हुन्छ)' };
@@ -139,7 +129,6 @@ function tagWord(word) {
   if (w.length > 2 && /(इनन्|यौं|इन्|यो)$/.test(w))
     return { tag: 'VBP', step: 'verb', rule: 'Simple past suffix (-यो/-इन्/-यौं) — गयो, आयो' };
 
-  // Case markers (AFTER verb rules to avoid -ले conflict)
   if (w.length > 4 && /(बाट|देखि)$/.test(w))
     return { tag: 'CMA', step: 'case', rule: 'Ablative case marker suffix (-बाट/-देखि) — देशबाट' };
 
@@ -155,7 +144,6 @@ function tagWord(word) {
   if (w.length > 3 && /(कै|को|का|की)$/.test(w))
     return { tag: 'CMP', step: 'case', rule: 'Possessive case marker suffix (-को/-का/-की) — नेपालको' };
 
-  // Past bare-e forms
   if (w.length >= 3 && /[\u0915-\u0931\u0933-\u0939\u094D]\u0947$/.test(w))
     return { tag: 'VBP', step: 'verb', rule: 'Past 3rd plural: consonant+े suffix — गरे, लेखे' };
 
@@ -168,7 +156,6 @@ function tagWord(word) {
   if (/(नुपर्ने|नुपर्छ|नुहोस्|नुस्|नु)$/.test(w))
     return { tag: 'VBN', step: 'verb', rule: 'Infinitive suffix (-नु/-नुस्/-नुहोस्) — गर्नु' };
 
-  // Noun derivation
   if (/हर[ूु]$/.test(w))
     return { tag: 'NN', step: 'noun', rule: 'Plural marker suffix (-हरू/-हरु) — मान्छेहरू' };
 
@@ -202,28 +189,27 @@ function tagWord(word) {
   if (w.length > 3 && /(गरी|तर्फ|पूर्वक|रूपमा)$/.test(w))
     return { tag: 'RB', step: 'adv', rule: 'Adverb derivation suffix (-गरी/-तर्फ/-पूर्वक)' };
 
-  // Default
   return {
     tag: w.length >= 5 ? 'NNP' : 'NN',
     step: 'default',
     rule: w.length >= 5
       ? 'Default: word length ≥5 chars → likely Proper Noun (NNP)'
-      : 'Default: short word (< 5 chars) → Common Noun (NN)'
+      : 'Default: short word (< 5 chars) → Common Noun (NN)',
   };
 }
 
 const STEP_LABELS = {
-  lexicon: { icon: '📖', label: 'Lexicon Lookup',     color: '#f59e0b' },
-  digit:   { icon: '🔢', label: 'Digit Check',        color: '#6b7280' },
-  punct:   { icon: '✦',  label: 'Punctuation Check',  color: '#9ca3af' },
-  roman:   { icon: '🔤', label: 'Roman/Foreign Check', color: '#6366f1' },
-  verb:    { icon: '⚡', label: 'Verb Rule Match',     color: '#10b981' },
-  case:    { icon: '🔗', label: 'Case Marker Rule',    color: '#0891b2' },
+  lexicon: { icon: '📖', label: 'Lexicon Lookup',      color: '#f59e0b' },
+  digit:   { icon: '🔢', label: 'Digit Check',         color: '#6b7280' },
+  punct:   { icon: '✦',  label: 'Punctuation Check',   color: '#9ca3af' },
+  roman:   { icon: '🔤', label: 'Roman/Foreign Check',  color: '#6366f1' },
+  verb:    { icon: '⚡', label: 'Verb Rule Match',      color: '#10b981' },
+  case:    { icon: '🔗', label: 'Case Marker Rule',     color: '#0891b2' },
   noun:    { icon: '🏷️', label: 'Noun Derivation Rule', color: '#3b82f6' },
-  adj:     { icon: '🎨', label: 'Adjective Rule',      color: '#f97316' },
-  adv:     { icon: '💨', label: 'Adverb Rule',          color: '#84cc16' },
-  default: { icon: '🔍', label: 'Default Fallback',    color: '#9ca3af' },
-  empty:   { icon: '∅',  label: 'Empty',               color: '#d1d5db' },
+  adj:     { icon: '🎨', label: 'Adjective Rule',       color: '#f97316' },
+  adv:     { icon: '💨', label: 'Adverb Rule',           color: '#84cc16' },
+  default: { icon: '🔍', label: 'Default Fallback',     color: '#9ca3af' },
+  empty:   { icon: '∅',  label: 'Empty',                color: '#d1d5db' },
 };
 
 const EXAMPLES = [
@@ -236,7 +222,6 @@ const EXAMPLES = [
   "पाइन्छ सकिन्छ गरिन्छ",
 ];
 
-// ── Tag chip component ────────────────────────────────────────────────────
 function TagChip({ tag, size = 'sm' }) {
   const info = TAG_INFO[tag] || { label: tag, color: '#6b7280', bg: '#f3f4f6' };
   return (
@@ -257,8 +242,7 @@ function TagChip({ tag, size = 'sm' }) {
   );
 }
 
-// ── Pipeline step visualization ───────────────────────────────────────────
-function PipelineSteps({ word, result, allSteps }) {
+function PipelineSteps({ result }) {
   const steps = [
     { key: 'lexicon', label: 'Lexicon' },
     { key: 'digit',   label: 'Digit' },
@@ -271,9 +255,7 @@ function PipelineSteps({ word, result, allSteps }) {
     { key: 'adv',     label: 'Adv Rules' },
     { key: 'default', label: 'Default' },
   ];
-
   const matchIdx = steps.findIndex(s => s.key === result.step);
-
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, margin: '8px 0' }}>
       {steps.map((s, i) => {
@@ -283,9 +265,7 @@ function PipelineSteps({ word, result, allSteps }) {
         return (
           <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{
-              padding: '3px 8px',
-              borderRadius: 20,
-              fontSize: 11,
+              padding: '3px 8px', borderRadius: 20, fontSize: 11,
               fontWeight: isMatch ? 700 : 400,
               background: isMatch ? info.color : isPassed ? '#f3f4f6' : '#fafafa',
               color: isMatch ? '#fff' : isPassed ? '#9ca3af' : '#d1d5db',
@@ -295,9 +275,7 @@ function PipelineSteps({ word, result, allSteps }) {
             }}>
               {info.icon} {s.label}
             </div>
-            {i < steps.length - 1 && (
-              <span style={{ color: '#d1d5db', fontSize: 10 }}>→</span>
-            )}
+            {i < steps.length - 1 && <span style={{ color: '#d1d5db', fontSize: 10 }}>→</span>}
           </div>
         );
       })}
@@ -305,29 +283,25 @@ function PipelineSteps({ word, result, allSteps }) {
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────
 export default function App() {
-  const [input, setInput]           = useState("सरकारले नयाँ नीति ल्यायो");
-  const [tagged, setTagged]         = useState([]);
-  const [selected, setSelected]     = useState(null);
-  const [animating, setAnimating]   = useState(false);
-  const [visibleCount, setVisible]  = useState(0);
-  const [activeTab, setActiveTab]   = useState('tagger'); // tagger | about | tags
+  const [input, setInput]         = useState("सरकारले नयाँ नीति ल्यायो");
+  const [tagged, setTagged]       = useState([]);
+  const [selected, setSelected]   = useState(null);
+  const [visibleCount, setVisible]= useState(0);
+  const [activeTab, setActiveTab] = useState('tagger');
 
-  const tag = () => {
-    const words  = input.trim().split(/\s+/).filter(Boolean);
+  const runTag = (text) => {
+    const words  = text.trim().split(/\s+/).filter(Boolean);
     const result = words.map(w => ({ word: w, ...tagWord(w) }));
     setTagged(result);
     setSelected(null);
     setVisible(0);
-    setAnimating(true);
     result.forEach((_, i) => {
       setTimeout(() => setVisible(i + 1), i * 180);
     });
-    setTimeout(() => setAnimating(false), result.length * 180 + 300);
   };
 
-  useEffect(() => { tag(); }, []);
+  useEffect(() => { runTag(input); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tagCounts = tagged.reduce((acc, t) => {
     acc[t.tag] = (acc[t.tag] || 0) + 1;
@@ -347,42 +321,26 @@ export default function App() {
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(255,255,255,0.08)',
         padding: '16px 32px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18,
-            }}>🏷️</div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>
-                Nepali POS Tagger
-              </div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                NCG 43-tag tagset · HMM + Morphology Rules · 227M tokens tagged
-              </div>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+          }}>🏷️</div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>Nepali POS Tagger</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>NCG 43-tag tagset · HMM + Morphology · 227M tokens tagged</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {['tagger', 'about', 'tags'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              padding: '6px 16px',
-              borderRadius: 20,
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              background: activeTab === tab
-                ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-                : 'rgba(255,255,255,0.06)',
+              padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600,
+              background: activeTab === tab ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.06)',
               color: activeTab === tab ? '#fff' : '#94a3b8',
-              transition: 'all 0.2s',
             }}>
               {tab === 'tagger' ? '🏷️ Tagger' : tab === 'about' ? 'ℹ️ About' : '📋 All Tags'}
             </button>
@@ -395,13 +353,10 @@ export default function App() {
         {/* TAGGER TAB */}
         {activeTab === 'tagger' && (
           <div>
-            {/* Input Section */}
+            {/* Input */}
             <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              borderRadius: 16,
-              padding: 24,
-              border: '1px solid rgba(255,255,255,0.08)',
-              marginBottom: 20,
+              background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 24,
+              border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20,
             }}>
               <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8, fontWeight: 600 }}>
                 ENTER NEPALI TEXT
@@ -410,48 +365,33 @@ export default function App() {
                 <input
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && tag()}
+                  onKeyDown={e => e.key === 'Enter' && runTag(input)}
                   style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.06)',
+                    flex: 1, background: 'rgba(255,255,255,0.06)',
                     border: '1.5px solid rgba(255,255,255,0.12)',
-                    borderRadius: 10,
-                    padding: '12px 16px',
-                    fontSize: 18,
-                    color: '#f1f5f9',
-                    outline: 'none',
-                    fontFamily: 'inherit',
+                    borderRadius: 10, padding: '12px 16px',
+                    fontSize: 18, color: '#f1f5f9', outline: 'none', fontFamily: 'inherit',
                   }}
                   placeholder="नेपाली वाक्य लेख्नुहोस्..."
                 />
-                <button onClick={tag} style={{
+                <button onClick={() => runTag(input)} style={{
                   padding: '12px 28px',
                   background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  border: 'none',
-                  borderRadius: 10,
-                  color: '#fff',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'transform 0.1s',
+                  border: 'none', borderRadius: 10, color: '#fff',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
                 }}>
                   Tag →
                 </button>
               </div>
-
-              {/* Example sentences */}
               <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 <span style={{ fontSize: 12, color: '#64748b', alignSelf: 'center' }}>Examples:</span>
                 {EXAMPLES.map((ex, i) => (
-                  <button key={i} onClick={() => { setInput(ex); }} style={{
+                  <button key={i} onClick={() => { setInput(ex); runTag(ex); }} style={{
                     padding: '4px 12px',
                     background: 'rgba(99,102,241,0.12)',
                     border: '1px solid rgba(99,102,241,0.25)',
-                    borderRadius: 20,
-                    color: '#a5b4fc',
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
+                    borderRadius: 20, color: '#a5b4fc', fontSize: 12,
+                    cursor: 'pointer', fontFamily: 'inherit',
                   }}>
                     {ex}
                   </button>
@@ -463,11 +403,8 @@ export default function App() {
             {tagged.length > 0 && (
               <>
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  borderRadius: 16,
-                  padding: 24,
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  marginBottom: 20,
+                  background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 24,
+                  border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20,
                 }}>
                   <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16, fontWeight: 600 }}>
                     TAGGED OUTPUT — click any word to see step-by-step breakdown
@@ -477,34 +414,21 @@ export default function App() {
                       const info = TAG_INFO[t.tag] || { color: '#6b7280', bg: '#f3f4f6', label: t.tag };
                       const isSelected = selected === i;
                       return (
-                        <div key={i}
-                          onClick={() => setSelected(isSelected ? null : i)}
-                          style={{
-                            cursor: 'pointer',
-                            padding: '10px 14px',
-                            borderRadius: 12,
-                            background: isSelected
-                              ? `${info.color}20`
-                              : 'rgba(255,255,255,0.04)',
-                            border: `2px solid ${isSelected ? info.color : 'rgba(255,255,255,0.08)'}`,
-                            textAlign: 'center',
-                            transition: 'all 0.2s',
-                            transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                            animation: `fadeIn 0.3s ease`,
-                          }}>
-                          <div style={{ fontSize: 20, color: '#f1f5f9', marginBottom: 4, fontWeight: 600 }}>
-                            {t.word}
-                          </div>
+                        <div key={i} onClick={() => setSelected(isSelected ? null : i)} style={{
+                          cursor: 'pointer', padding: '10px 14px', borderRadius: 12,
+                          background: isSelected ? `${info.color}20` : 'rgba(255,255,255,0.04)',
+                          border: `2px solid ${isSelected ? info.color : 'rgba(255,255,255,0.08)'}`,
+                          textAlign: 'center', transition: 'all 0.2s',
+                          transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                          animation: 'fadeIn 0.3s ease',
+                        }}>
+                          <div style={{ fontSize: 20, color: '#f1f5f9', marginBottom: 4, fontWeight: 600 }}>{t.word}</div>
                           <TagChip tag={t.tag} />
-                          <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                            {info.label}
-                          </div>
+                          <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>{info.label}</div>
                         </div>
                       );
                     })}
                   </div>
-
-                  {/* Tag distribution */}
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>TAG DISTRIBUTION</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -521,17 +445,12 @@ export default function App() {
                 {/* Step-by-step breakdown */}
                 {selected !== null && tagged[selected] && (
                   <div style={{
-                    background: 'rgba(99,102,241,0.06)',
-                    borderRadius: 16,
-                    padding: 24,
-                    border: '1.5px solid rgba(99,102,241,0.25)',
-                    marginBottom: 20,
+                    background: 'rgba(99,102,241,0.06)', borderRadius: 16, padding: 24,
+                    border: '1.5px solid rgba(99,102,241,0.25)', marginBottom: 20,
                   }}>
                     <div style={{ fontSize: 13, color: '#a5b4fc', fontWeight: 700, marginBottom: 16 }}>
                       ⚡ STEP-BY-STEP TAGGING PROCESS — "{tagged[selected].word}"
                     </div>
-
-                    {/* Word display */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                       <div style={{
                         fontSize: 36, fontWeight: 800, color: '#f1f5f9',
@@ -549,31 +468,18 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Pipeline visualization */}
-                    <div style={{
-                      background: 'rgba(0,0,0,0.2)',
-                      borderRadius: 12,
-                      padding: 16,
-                      marginBottom: 16,
-                    }}>
+                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
                       <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>
                         RULE PIPELINE (checks stop at first match ✓)
                       </div>
-                      <PipelineSteps
-                        word={tagged[selected].word}
-                        result={tagged[selected]}
-                      />
+                      <PipelineSteps result={tagged[selected]} />
                     </div>
 
-                    {/* Matched rule */}
                     <div style={{
                       background: 'rgba(99,102,241,0.1)',
                       border: '1px solid rgba(99,102,241,0.3)',
-                      borderRadius: 10,
-                      padding: '12px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
+                      borderRadius: 10, padding: '12px 16px',
+                      display: 'flex', alignItems: 'center', gap: 12,
                     }}>
                       <div style={{
                         width: 36, height: 36, borderRadius: 8,
@@ -593,10 +499,9 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* All steps explanation */}
                     <div style={{ marginTop: 16 }}>
                       <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>
-                        WHAT HAPPENED BEFORE THE MATCH (rules that were checked and skipped):
+                        RULES CHECKED AND SKIPPED BEFORE MATCH:
                       </div>
                       {(() => {
                         const allStepKeys = ['lexicon','digit','punct','roman','verb','case','noun','adj','adv','default'];
@@ -612,10 +517,8 @@ export default function App() {
                             {skipped.map(s => (
                               <div key={s} style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
-                                padding: '6px 12px',
-                                background: 'rgba(255,255,255,0.02)',
-                                borderRadius: 8,
-                                opacity: 0.5,
+                                padding: '6px 12px', background: 'rgba(255,255,255,0.02)',
+                                borderRadius: 8, opacity: 0.5,
                               }}>
                                 <span style={{ fontSize: 14 }}>✗</span>
                                 <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'monospace' }}>
@@ -630,11 +533,9 @@ export default function App() {
                   </div>
                 )}
 
-                {/* All words breakdown table */}
+                {/* Full table */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  borderRadius: 16,
-                  padding: 24,
+                  background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 24,
                   border: '1px solid rgba(255,255,255,0.08)',
                 }}>
                   <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600, marginBottom: 16 }}>
@@ -656,14 +557,11 @@ export default function App() {
                         {tagged.map((t, i) => {
                           const info = TAG_INFO[t.tag] || { label: t.tag, color: '#6b7280' };
                           return (
-                            <tr key={i}
-                              onClick={() => setSelected(i === selected ? null : i)}
-                              style={{
-                                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                cursor: 'pointer',
-                                background: selected === i ? 'rgba(99,102,241,0.08)' : 'transparent',
-                                transition: 'background 0.15s',
-                              }}>
+                            <tr key={i} onClick={() => setSelected(i === selected ? null : i)} style={{
+                              borderBottom: '1px solid rgba(255,255,255,0.04)',
+                              cursor: 'pointer',
+                              background: selected === i ? 'rgba(99,102,241,0.08)' : 'transparent',
+                            }}>
                               <td style={{ padding: '10px 12px', color: '#475569' }}>{i+1}</td>
                               <td style={{ padding: '10px 12px', fontWeight: 700, fontSize: 16, color: '#f1f5f9' }}>{t.word}</td>
                               <td style={{ padding: '10px 12px' }}><TagChip tag={t.tag} /></td>
@@ -696,21 +594,20 @@ export default function App() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             {[
               { icon: '🔬', title: 'What is POS Tagging?',
-                body: 'Part-of-Speech (POS) tagging assigns grammatical labels to each word in a sentence. For example: "सरकारले" → CME (Ergative case marker), "नीति" → NN (Common Noun), "ल्यायो" → VBP (Past Verb). It is the foundation of all NLP applications.' },
+                body: 'Part-of-Speech (POS) tagging assigns grammatical labels to each word. For example: "सरकारले" → CME (Ergative), "नीति" → NN (Common Noun), "ल्यायो" → VBP (Past Verb). It is the foundation of all NLP applications.' },
               { icon: '🏗️', title: 'How This Tagger Works',
-                body: 'Uses a pipeline of 35 morphological rules derived from the Nepali Computational Grammar (NCG) paper, plus a 120-entry lexicon. Each word is checked in priority order: lexicon → digit → punctuation → verb rules → case marker rules → noun derivation → default.' },
+                body: 'Uses a pipeline of 35 morphological rules from the Nepali Computational Grammar (NCG) paper, plus a 120-entry lexicon. Each word is checked in order: lexicon → digit → punctuation → verb rules → case marker rules → noun derivation → default.' },
               { icon: '📊', title: 'What Was Tagged',
-                body: '227 million tokens across 6 domains: General Web (2.89 GB), Government/Legal (410 MB), Literature/Poetry (80 MB), News (177 MB), Social Media (109 MB), Wikipedia (198 MB). Total corpus: 3.77 GB.' },
+                body: '227 million tokens across 6 domains: General Web (2.89 GB), Government/Legal (410 MB), Literature/Poetry (80 MB), News (177 MB), Social Media (109 MB), Wikipedia (198 MB). Total: 3.77 GB.' },
               { icon: '⚡', title: 'Performance',
-                body: 'Colab CPU (1 core): 489,592 TPS. Local PC CPU (12 cores parallel): 1,442,793 TPS — 2.95× faster. Colab T4 GPU: 533,238 TPS. The 12-core CPU outperforms the GPU for rule-based tagging because the task is I/O bound, not compute bound.' },
+                body: 'Colab CPU (1 core): 489,592 TPS. Local PC CPU (12 cores parallel): 1,442,793 TPS — 2.95× faster. Colab T4 GPU: 533,238 TPS. The 12-core CPU outperforms the GPU because the task is I/O bound, not compute bound.' },
               { icon: '🎯', title: 'Accuracy',
-                body: '100% on 57-token manual evaluation set. NN+NNP share: 43-47% across domains (healthy range for Nepali text). All unicode edge cases fixed: vowel-sign forms (ेको vs एको), ergative -ले vs past-ले disambiguation, abstract nouns with -ण.' },
+                body: '100% on 57-token manual evaluation. NN+NNP share: 43–47% across domains (healthy range). All unicode edge cases fixed including vowel-sign forms, ergative disambiguation, abstract nouns with -ण.' },
               { icon: '🌍', title: 'Real World Uses',
-                body: 'Machine translation, named entity recognition, dependency parsing, search engines, chatbots, spell checkers, news categorization, government document processing, Nepali keyboard autocomplete, educational language tools.' },
+                body: 'Machine translation, named entity recognition, dependency parsing, search engines, chatbots, spell checkers, news categorization, government document processing, Nepali keyboard autocomplete, educational tools.' },
             ].map((card, i) => (
               <div key={i} style={{
-                background: 'rgba(255,255,255,0.04)',
-                borderRadius: 16, padding: 24,
+                background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 24,
                 border: '1px solid rgba(255,255,255,0.08)',
               }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>{card.icon}</div>
@@ -721,24 +618,21 @@ export default function App() {
           </div>
         )}
 
-        {/* ALL TAGS TAB */}
+        {/* TAGS TAB */}
         {activeTab === 'tags' && (
           <div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>
-              Complete NCG (Nepali Computational Grammar) 43-tag coarse tagset used in this project
+              Complete NCG (Nepali Computational Grammar) 43-tag coarse tagset
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
               {Object.entries(TAG_INFO).map(([tag, info]) => (
                 <div key={tag} style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  borderRadius: 12, padding: '14px 16px',
+                  background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '14px 16px',
                   border: `1.5px solid ${info.color}20`,
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
                   <div style={{
-                    minWidth: 48, height: 32,
-                    background: info.bg,
-                    borderRadius: 6,
+                    minWidth: 48, height: 32, background: info.bg, borderRadius: 6,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: info.color, fontWeight: 800, fontSize: 13, fontFamily: 'monospace',
                   }}>
