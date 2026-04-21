@@ -189,8 +189,8 @@ function tagSurface(surface, isMorpheme, morphemeTag) {
     return { tag:'VBP', step:'verb', rule:'Simple past (-यो/-इन्/-यौं)' };
   if (w.length>=3 && /[\u0915-\u0931\u0933-\u0939\u094D]\u0947$/.test(w))
     return { tag:'VBP', step:'verb', rule:'Past 3rd plural consonant+े — गरे, लेखे' };
-  if (w.length>=3 && /[\u0915-\u0939\u093e\u093f\u0940]\u090f$/.test(w))
-    return { tag:'VBP', step:'verb', rule:'Past independent ए — गाए, आए' };
+  if (/[\u0906-\u0914\u0915-\u0939\u093e\u093f\u0940]\u090f$/.test(w))
+    return { tag:'VBP', step:'verb', rule:'Past independent ए form — आए, गाए, खाए' };
   if (w.length>2 && /(ँदा|न्दा|ँदै|न्दै|दै|दा)$/.test(w))
     return { tag:'VBG', step:'verb', rule:'Gerund (-दै/-ँदै/-दा) — गर्दै' };
   if (/(नुपर्ने|नुपर्छ|नुहोस्|नुस्|नु)$/.test(w))
