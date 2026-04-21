@@ -71,9 +71,9 @@ const LEXICON = {
   'ओहो':'UH','वाह':'UH','अरे':'UH',
   '।':'SYM',',':'SYM','?':'SYM','!':'SYM','-':'SYM',
   '(':'SYM',')':'SYM','—':'SYM',':':'SYM',';':'SYM',
-  // Standalone morphemes
+  // Standalone morphemes (को kept as PPW above — CMP assigned via segmentation)
   'ले':'CME','लाई':'CMD','मा':'CML','बाट':'CMA','देखि':'CMA',
-  'को':'CMP','का':'CMP','की':'CMP','कै':'CMP',
+  'का':'CMP','की':'CMP','कै':'CMP',
   'हरू':'PL','हरु':'PL',
 };
 
@@ -155,7 +155,7 @@ function tagSurface(surface, isMorpheme, morphemeTag) {
   const w = surface.trim();
   if (!w) return { tag: 'SYM', step: 'empty', rule: 'Empty' };
   if (LEXICON[w]) return { tag: LEXICON[w], step: 'lexicon', rule: `Lexicon: "${w}" → ${LEXICON[w]}` };
-  if (/^[०-९\d][०-९\d,./%\-]*$/.test(w)) return { tag: 'CD', step: 'digit', rule: 'Digit pattern' };
+  if (/^[०-९\d][०-९\d,./%\-]*$/.test(w)) return { tag: 'CD', step: 'digit', rule: 'Digit pattern' }; // eslint-disable-line no-useless-escape
   if (/^[^\u0900-\u097F\w]+$/.test(w)) return { tag: 'SYM', step: 'punct', rule: 'Punctuation/symbol' };
   if (/^[A-Za-z]/.test(w)) return { tag: 'FW', step: 'roman', rule: 'Roman/English → Foreign Word' };
 
@@ -342,7 +342,6 @@ export default function App() {
   const [tagged, setTagged]        = useState([]);
   const [groups, setGroups]        = useState([]);
   const [selected, setSelected]    = useState(null);
-  const [visibleCount, setVisible] = useState(0);
   const [activeTab, setActiveTab]  = useState('tagger');
 
   const runTag = (text) => {
@@ -350,8 +349,6 @@ export default function App() {
     setTagged(result);
     setGroups(groupByOriginal(result));
     setSelected(null);
-    setVisible(0);
-    result.forEach((_, i) => setTimeout(() => setVisible(i + 1), i * 150));
   };
 
   useEffect(() => { runTag(input); }, []); // eslint-disable-line react-hooks/exhaustive-deps
