@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+import Tesseract from "tesseract.js";
 // ── NCG Tag definitions ────────────────────────────────────────────────────
 const TAG_INFO = {
   VA:  { label: "Copula/Aux",      color: "#f59e0b", bg: "#fef3c7", desc: "Auxiliary/Copula verb (हुनु, छ, हो)" },
@@ -343,6 +343,7 @@ export default function App() {
   const [groups, setGroups]        = useState([]);
   const [selected, setSelected]    = useState(null);
   const [activeTab, setActiveTab]  = useState('tagger');
+  const [loading, setLoading] = useState(false);
 
   const runTag = (text) => {
     const result = runPipeline(text);
@@ -355,7 +356,24 @@ export default function App() {
 
   const tagCounts = tagged.reduce((acc, t) => { acc[t.tag]=(acc[t.tag]||0)+1; return acc; }, {});
   const selectedToken = selected !== null ? tagged[selected] : null;
+async function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
 
+  setLoading(true);
+
+  const { data: { text } } = await Tesseract.recognize(file, "nep");
+
+  const nepaliText = text
+    .split(/\s+/)
+    .filter(w => /[\u0900-\u097F]/.test(w))
+    .join(" ");
+
+  setInput(nepaliText);
+  runTag(nepaliText);
+
+  setLoading(false);
+}
   return (
     <div style={{
       minHeight:'100vh',
@@ -400,6 +418,20 @@ export default function App() {
         {activeTab === 'tagger' && (
           <div>
             {/* Input */}
+            <div style={{ marginTop: 10 }}>
+  <input
+    type="file"
+    accept="image/*"
+    capture="environment"
+    onChange={handleImageUpload}
+  />
+</div>
+
+{loading && (
+  <div style={{ color: "#f59e0b", marginTop: 8 }}>
+    Processing image...
+  </div>
+)}
             <div style={{
               background:'rgba(255,255,255,0.04)', borderRadius:16, padding:24,
               border:'1px solid rgba(255,255,255,0.08)', marginBottom:20,
