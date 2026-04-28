@@ -223,7 +223,7 @@ const SCORE_W = { NNP:3.0, NN:2.0, VBP:1.5, VBF:1.0, NNI:1.0, VBN:0.8, JJ:0.5, R
 
 function extractiveSummarize(text, ratio = 0.4) {
   const rawSents = text
-    .split(/[।!\?]+/)
+    .split(/[।!?]+/)
     .map(s => s.trim())
     .filter(s => s.length > 8 && /[\u0900-\u097F]/.test(s));
 
